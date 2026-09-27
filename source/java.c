@@ -21,6 +21,11 @@ static jobject stub_bytearray(jmethodID id, va_list args) {
     return (jobject)jda_alloc(0, FIELD_TYPE_BYTE);
 }
 
+static jobject getAbsolueFilePath_impl(jmethodID id, va_list args) {
+    (void)id; (void)args;
+    return (jobject)jni->NewStringUTF(jni, "ux0:data/zenonia1");
+}
+
 static jobject readAssete_impl(jmethodID id, va_list args) {
     jstring jstr = va_arg(args, jstring);
 
@@ -152,7 +157,7 @@ NameToMethodID nameToMethodId[] = {
     { 106, "openStoreWithProductId", METHOD_TYPE_VOID },
     { 107, "requestIAP", METHOD_TYPE_VOID },
     { 108, "setReplyID", METHOD_TYPE_VOID },
-    { 109, "getAbsolueFilePath", METHOD_TYPE_VOID },
+    { 109, "getAbsolueFilePath", METHOD_TYPE_OBJECT },
     { 110, "getPWByte", METHOD_TYPE_VOID },
     { 111, "getRePWByte", METHOD_TYPE_VOID },
     { 112, "hideEditView", METHOD_TYPE_VOID },
@@ -513,7 +518,7 @@ MethodsObject methodsObject[] = {
     { 106, stub_obj },
     { 107, stub_obj },
     { 108, stub_obj },
-    { 109, stub_obj },
+    { 109, getAbsolueFilePath_impl },
     { 110, stub_obj },
     { 111, stub_obj },
     { 112, stub_obj },

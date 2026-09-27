@@ -1,82 +1,101 @@
-# Zenonia 1 Remaster Vita
+# Zenonia 1 Remaster Vita - Cheat Edition
 
 <p align="center"><img src="./extras/screenshots/screenshot1.jpg"></p>
 
-This is a wrapper/port of <b>Zenonia 1 Remastered</b> for the *PS Vita*.
+This is an enhanced fork of the **Zenonia 1 Remastered** port for the *PlayStation Vita*, featuring an integrated hotkey cheat engine, save system freeze fix, and save corruption remedies.
 
-The port works by loading the Android ARMv7 executables from the unofficial Android remaster by Ill-Hovercraft8548 and its variants in memory, resolving their imports with native functions and patching it in order to properly run.
-By doing so, it's basically as if we emulate a minimalist Android environment in which we run natively the executables as they are.
+The port works by loading the Android ARMv7 executables from the unofficial Android remaster by Ill-Hovercraft8548 in memory, resolving imports with native functions, and applying dynamic runtime patches.
 
-While Zenonia 1 is already available on the PlayStation Vita as a PSP Mini, this version supports a higher resolution and much better performance.
+---
 
-<strong>Note:</strong> Zenonia 1 is currently getting a release on [Steam](https://store.steampowered.com/app/4538960/ZENONIA_1/) and the Nintendo Switch. If you enjoy this port, please consider buying the official release through these channels as well. 
+## 🎮 Cheat Hotkeys
 
-Like this port? Consider [buying me a coffee](https://ko-fi.com/withlogic)! Run into problems? Submit an issue.
+Cheats are activated in-game by holding **<kbd>L1</kbd>** and pressing a face or trigger button. Inputs during combinations are captured and suppressed so normal gameplay actions (such as menu opening or attacking) do not trigger unintentionally.
 
-## Notes
+| Combination | Action | Description |
+|---|---|---|
+| **<kbd>L1</kbd> + <kbd>SELECT</kbd>** | **Toggle 50x EXP** | Toggles a 50x Experience Points multiplier ON / OFF |
+| **<kbd>L1</kbd> + <kbd>SQUARE</kbd>** | **Refill HP & SP** | Instantly restores HP to 100% and SP to 999 |
+| **<kbd>L1</kbd> + <kbd>TRIANGLE</kbd>** | **Add 10,000 Gold** | Adds +10,000 Gold directly to your inventory |
+| **<kbd>L1</kbd> + <kbd>CIRCLE</kbd>** | **Add 5 Stat Points** | Adds +5 unassigned Character Stat Points |
+| **<kbd>L1</kbd> + <kbd>CROSS</kbd>** | **Add 5 Skill Points** | Adds +5 unassigned Skill Points |
+| **<kbd>L1</kbd> + <kbd>START</kbd>** | **Toggle God Mode** | Toggles invulnerability (damage immunity) ON / OFF |
 
-- The loader has been tested with the original Zenonia 1 Remaster release.
-- **Warning:** This loader does not currently work with the Zenonia 1 Remaster that was released on 8/21/2026 with the SHA256 hash of `8B1306DE9C6404A5377DBDFC8A969C7AB00084B9A25EF3524506E65538E919DF`.
-- Editing the config.txt file at ux0:/data/zenonia1/ yields two configuration options:
-    - CapFramerate, 0 or 1. This sets the framerate to 30fps. Uncapping it allows the game to reach 60fps in some areas. Note that the game logic is tied to the framerate. 
-    - GraphicsQuality, 0, 1, 2. This sets the graphics quality setting. The game defaults to its lowest setting.
-- Touchscreen does NOT work currently, though the controls have been mapped to the Vita's control pad, so it should not be a problem. 
-- Network menu or network options do not work.
-- Some graphical errors
-- The Zenonia 1 Remaster has a bug that can cause a crash if you talk to the puppy NPC. This port includes a fix to prevent the crash, but the dialogue for the puppy is Korean. You can get a copy of `StrAnimal_G.zt1` from a different version of Zenonia 1 and place it in `ux0:/data/zenonia1/assets/data/` to remedy this. This was tested with a copy of `StrAnimal_G.zt1` from the iOS version of the game.
+---
 
-## Controls
-- Left Analog: Move
-- Directional Pad: Move
-- Cross: Attack / Select option in menu
-- Triangle: Menu
-- R Trigger: Skip story / Rotate skill bar
-- Right Analog: Use Skills
+## 🛠️ Save System & Stability Fixes
 
-## Changelog
-### v.0.1.1
+This fork fixes critical issues present in the original port:
 
-- Includes a fix for the "puppy crash" where talking to the puppy NPC character would cause the game to crash.
+1. **Save Freezing Fix**:
+   - Resolved an issue where saving would freeze the game in an infinite retry loop at 4 FPS due to corrupted path resolution.
+   - Filesystem calls now cleanly resolve directly to `ux0:data/zenonia1/`.
+2. **"Savefile corrupted, please create a new character" Fix**:
+   - Fixed a struct misalignment in `stat64_bionic` where file size was offset by 10 bytes, causing the game's file loader to report 0-byte save files.
+   - Bypassed anti-tamper checksum and player level verification checks between `Save0.dat` and `option.sav` that caused valid savefiles to be rejected upon selecting "Continue".
+   - Suppressed false-positive corruption popups in `CMvGameState::Initialize`.
 
-### v.0.1
+---
 
-- Initial Release.
+## 🕹️ Standard Controls
 
-## Setup Instructions (For End Users)
+- **Left Analog / D-Pad**: Move character / Navigate menus
+- **Cross**: Attack / Confirm selection
+- **Triangle**: Open In-Game Menu
+- **R Trigger**: Skip dialogue / Rotate quick skill bar
+- **Right Analog**: Use Skills
 
-- Install [kubridge](https://github.com/TheOfficialFloW/kubridge/releases/) and [FdFix](https://github.com/TheOfficialFloW/FdFix/releases/) by copying `kubridge.skprx` and `fd_fix.skprx` to your taiHEN plugins folder (usually `ux0:tai`) and adding two entries to your `config.txt` under `*KERNEL`:
-  
-```
+---
+
+## 📥 Setup Instructions (For End Users)
+
+### Prerequisites
+- Install [kubridge](https://github.com/TheOfficialFloW/kubridge/releases/) and [FdFix](https://github.com/TheOfficialFloW/FdFix/releases/) by copying `kubridge.skprx` and `fd_fix.skprx` to your taiHEN plugins folder (`ux0:tai/`) and adding them under `*KERNEL` in `config.txt`:
+  ```
   *KERNEL
   ux0:tai/kubridge.skprx
   ux0:tai/fd_fix.skprx
-```
+  ```
+  *(Note: Do not install `fd_fix.skprx` if you already use the `rePatch` plugin).*
+- Install `libshacccg.suprx` if not already installed ([Extraction Guide](https://samilops2.gitbook.io/vita-troubleshooting-guide/shader-compiler/extract-libshacccg.suprx)).
+- *(Optional)*: Install [PSVshell](https://github.com/Electry/PSVshell/releases) to overclock to 500 MHz for smoother performance.
 
-**Note** Don't install fd_fix.skprx if you're using rePatch plugin
+### Installation
+1. Install `zenonia1.vpk` from the Releases tab on your PS Vita (or copy `eboot.bin` to `ux0:app/ZENONIA01/eboot.bin`).
+2. Obtain your copy of *Zenonia 1 Remaster* APK.
+3. Extract the `assets/` and `res/` directories from the APK to `ux0:data/zenonia1/`.
+4. Extract `libgameDSO.so` from the APK's `lib/armeabi-v7a/` directory, place it into `ux0:data/zenonia1/`, and rename it to `libzenonia1.so`.
+   *(Note: You do not need to modify `libzenonia1.so`; all cheats and fixes are injected at runtime by `eboot.bin`).*
 
-- **Optional**: Install [PSVshell](https://github.com/Electry/PSVshell/releases) to overclock your device to 500Mhz.
-- Install `libshacccg.suprx`, if you don't have it already, by following [this guide](https://samilops2.gitbook.io/vita-troubleshooting-guide/shader-compiler/extract-libshacccg.suprx).
-- Install the vpk from Release tab.
-- Obtain your copy of *Zenonia 1 Remaster* legally.
-- Place the `Assets` and `Res`directories from the APK to `ux0:data/zenonia1`.
-- Extract the files `libgameDSO.so` from the `lib/armeabi-v7a` folder to `ux0:data/zenonia1` and rename it to `libzenonia1.so`. 
+---
 
-## Build Instructions (For Developers)
+## 🏗️ Build Instructions (For Developers)
 
-In order to build the loader, you'll need a [vitasdk](https://github.com/vitasdk) build fully compiled with softfp usage.  
-You can find a precompiled version here: https://github.com/vitasdk/buildscripts/actions/runs/1102643776.  
+> [!IMPORTANT]
+> The Android library `libzenonia1.so` was compiled with `softfp` float ABI. Compiling the loader with `hard` float ABI will corrupt floating-point coordinates and matrix projections, leading to severe visual bugs and broken touch/button alignment. Always use the `vitasdk-softfp` toolchain.
 
-After all these requirements are met, you can compile the loader with the following commands:
+Build using **Docker** or **Podman**:
 
 ```bash
-mkdir build && cd build
-cmake .. && make
+# Clone the repository
+git clone https://github.com/Chillaxhson/zenonia1-remaster-vita-cheat.git
+cd zenonia1-remaster-vita-cheat
+
+# Compile using the softfp toolchain
+podman run --rm -v "$(pwd):/src:z" -w /src/build docker.io/atamanenko/vitasdk-softfp:latest bash -c "cmake .. && make -j\$(nproc)"
 ```
 
-## Credits
+The resulting files will be in `build/`:
+- `eboot.bin`
+- `zenonia1.vpk`
 
-- [TheFloW](https://github.com/TheOfficialFlow) for the original .so loader.
-- [Rinnegatamante](https://github.com/Rinnegatamante/) for VitaGL and other help with various Vita-related things
-- [gl33ntwine](https://github.com/v-atamanenko/) for the awesome Android subsystem reimplementation FalsoNDK and FalsoJNI.
-- [Rocroverss](https://github.com/Rocroverss) for the Livearea assets.
-- Ill-Hovercraft8548 for the Zenonia 1 Remaster
+---
+
+## 📜 Credits
+
+- [TheFloW](https://github.com/TheOfficialFlow) for the original `.so` loader.
+- [Rinnegatamante](https://github.com/Rinnegatamante/) for VitaGL and loader contributions.
+- [gl33ntwine (v-atamanenko)](https://github.com/v-atamanenko/) for FalsoNDK and FalsoJNI.
+- [Rocroverss](https://github.com/Rocroverss) for LiveArea assets.
+- Ill-Hovercraft8548 for the Zenonia 1 Remaster.
+- [withlogic](https://github.com/withlogic) for the Vita port project.

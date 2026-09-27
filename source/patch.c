@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include "utils/logger.h"
 
 extern so_module so_mod;
@@ -23,20 +24,17 @@ static so_hook CMvAppC1Ev_hook;
 static so_hook CMvPlayerC2Ei_hook;
 static so_hook CMvGameState_hook;
 
-static so_hook _Z12GsFSFileSizePKci_hook;
-static so_hook _ZN12CMvGameState15IsExistGameDataEi_hook;
-static so_hook _ZN12CMvGameState12LoadGameDataEi_hook;
 static so_hook _ZN20GVUIPlayerController19InitialPlayerPadSetEv_hook;
 static so_hook _ZN11CMvGraphics10SetQualityE16EnumQualityLevel_hook;
 
 static so_hook CGsStateManagerI12CMvGameStateERunPS0_h_hook;
 static so_hook _ZN9CMvPlayer13DrawCharacterEii_hook;
 
+static so_hook get_real_path_hook;
+
 void *g_CMvApp_instance = NULL;
 void *g_CMvPlayer_instance = NULL;
 void *g_CMvGameState_instance = NULL;
-
-int game_data_exists = -1;
 
 extern int settings_graphicsqualty;
 
@@ -103,32 +101,24 @@ void _ZN12CMvGameStateC2Ev(void *this) {
     SO_CONTINUE(void *, CMvGameState_hook, this);
 }
 
-void _ZN12CMvGameState15IsExistGameDataEi_patched(void *this, int param) {
-    l_debug("CMvGameState::IsExistGameData: Hooked into function --> param=%d", param);
-    if(game_data_exists != -1){
-        game_data_exists = -1;
-        SO_CONTINUE(void *, _ZN12CMvGameState15IsExistGameDataEi_hook, this, game_data_exists);
-    } 
-}
+int get_real_path_patched(const char *in_path, char *out_path) {
+    if (!in_path || !out_path) return 0;
 
-void _ZN12CMvGameState12LoadGameDataEi_patched(void *this, int param) {
-    l_debug("CMvGameState::LoadGameData: Hooked into function --> param=%d", param);
-    game_data_exists = param;
-    SO_CONTINUE(void *, _ZN12CMvGameState12LoadGameDataEi_hook, this, param);
-}
+    l_debug("get_real_path: in_path='%s'", in_path);
 
-int _Z12GsFSFileSizePKci_patched(const char *path, int *intparam) {
-    char new_path[256];
-    struct stat st;
-
-    snprintf(new_path, sizeof(new_path), "%s%s", "ux0:/data/zenonia1//", path);
-
-    if (stat(new_path, &st) == 0) {
-        l_debug("Stat: %s -> size=%d", new_path, (int)st.st_size);
-        return (int)st.st_size;
+    if (strncmp(in_path, "ux0:", 4) == 0 || strncmp(in_path, "app0:", 5) == 0) {
+        snprintf(out_path, 256, "%s", in_path);
+        return 1;
     }
 
-    return -1;
+    const char *rel = in_path;
+    while (*rel == '/') {
+        rel++;
+    }
+
+    snprintf(out_path, 256, "%s%s", DATA_PATH, rel);
+    l_debug("get_real_path: out_path='%s'", out_path);
+    return 1;
 }
 
 void _ZN20GVUIPlayerController19InitialPlayerPadSetEv_patched(void *this) {        // how annoying. THIS is what gets rid of the touch display.
@@ -154,6 +144,38 @@ void _ZN9CMvPlayer13DrawCharacterEii_patched(void *this, int param1, int param2)
     return 0;
 }
 
+// Cheat: God Mode
+int cheat_god_mode = 0;
+static so_hook CMvPlayer_OnDamaged_hook;
+
+void CMvPlayer_OnDamaged_patched(void *this_ptr, int damage, void* attacker, bool b1, int elem, bool b2) {
+    if (cheat_god_mode) {
+        return; // Suppress damage
+    }
+    SO_CONTINUE(int, CMvPlayer_OnDamaged_hook, this_ptr, damage, attacker, b1, elem, b2);
+}
+
+// Cheat: 50x EXP Multiplier
+int cheat_exp_multiplier = 0;
+static so_hook CMvPlayer_IncExp_hook;
+
+int CMvPlayer_IncExp_patched(void *this_ptr, unsigned int exp, bool b) {
+    if (cheat_exp_multiplier) {
+        if (exp > (4294967295U / 50)) {
+            exp = 4294967295U;
+        } else {
+            exp *= 50;
+        }
+    }
+    return SO_CONTINUE(int, CMvPlayer_IncExp_hook, this_ptr, exp, b);
+}
+
+// Suppress "Savefile corrupted, please create a new character" popup
+static so_hook CreateInvalidDataPopup_hook;
+void CreateInvalidDataPopup_patched(void *this) {
+    l_warn("CMvSystemMenu::CreateInvalidDataPopup called - suppressed!");
+}
+
 void so_patch(void) {
     CMvAppC1Ev_hook = hook_addr((uintptr_t)so_symbol(&so_mod, "_ZN6CMvAppC1Ev"),
         (uintptr_t)&CMvAppC1Ev_patched);
@@ -164,14 +186,8 @@ void so_patch(void) {
     CMvGameState_hook = hook_addr((uintptr_t)so_symbol(&so_mod, "_ZN12CMvGameStateC2Ev"),
         (uintptr_t)&_ZN12CMvGameStateC2Ev);
 
-    _Z12GsFSFileSizePKci_hook = hook_addr((uintptr_t)so_symbol(&so_mod, "_Z12GsFSFileSizePKci"),
-        (uintptr_t)&_Z12GsFSFileSizePKci_patched);
-
-    _ZN12CMvGameState15IsExistGameDataEi_hook = hook_addr((uintptr_t)so_symbol(&so_mod, "_ZN12CMvGameState15IsExistGameDataEi"),
-        (uintptr_t)&_ZN12CMvGameState15IsExistGameDataEi_patched);
-
-    _ZN12CMvGameState12LoadGameDataEi_hook = hook_addr((uintptr_t)so_symbol(&so_mod, "_ZN12CMvGameState12LoadGameDataEi"),
-        (uintptr_t)&_ZN12CMvGameState12LoadGameDataEi_patched);
+    get_real_path_hook = hook_addr((uintptr_t)so_symbol(&so_mod, "_Z13get_real_pathPcS_"),
+        (uintptr_t)&get_real_path_patched);
 
     _ZN20GVUIPlayerController19InitialPlayerPadSetEv_hook = hook_addr((uintptr_t)so_symbol(&so_mod, "_ZN20GVUIPlayerController19InitialPlayerPadSetEv"),
         (uintptr_t)&_ZN20GVUIPlayerController19InitialPlayerPadSetEv_patched); 
@@ -182,4 +198,44 @@ void so_patch(void) {
     CGsStateManagerI12CMvGameStateERunPS0_h_hook = hook_addr((uintptr_t)so_symbol(&so_mod, "_ZN15CGsStateManagerI12CMvGameStateE3RunEPS0_h"),
         (uintptr_t)&CGsStateManagerRun_patched);
 
+    CMvPlayer_OnDamaged_hook = hook_addr(
+        (uintptr_t)so_symbol(&so_mod, "_ZN9CMvPlayer9OnDamagedEiP12CMvCharacterb15EnumElementTypeb"),
+        (uintptr_t)&CMvPlayer_OnDamaged_patched
+    );
+
+    CMvPlayer_IncExp_hook = hook_addr(
+        (uintptr_t)so_symbol(&so_mod, "_ZN9CMvPlayer6IncExpEjb"),
+        (uintptr_t)&CMvPlayer_IncExp_patched
+    );
+
+    // Suppress "Savefile corrupted" popup
+    CreateInvalidDataPopup_hook = hook_addr(
+        (uintptr_t)so_symbol(&so_mod, "_ZN13CMvSystemMenu22CreateInvalidDataPopupEv"),
+        (uintptr_t)&CreateInvalidDataPopup_patched
+    );
+
+    // Bypass DRM / save checksum & level check in CMvGameState::LoadGameData
+    // Offset 0xf2 from _ZN12CMvGameState12LoadGameDataEi (0x000deb5c -> 0x000dec4e)
+    // Original: 0x4288 (cmp r0, r1), 0xd110 (bne.n 0xdec74 -> calls CreateInvalidDataPopup)
+    // Patched:  0xe01a (b.n 0xdec86 -> returns 1), 0xbf00 (nop)
+    uintptr_t load_game_data = (uintptr_t)so_symbol(&so_mod, "_ZN12CMvGameState12LoadGameDataEi");
+    if (load_game_data) {
+        uintptr_t patch_addr = (load_game_data & ~1) + 0xf2;
+        uint16_t patch_code[2] = { 0xe01a, 0xbf00 }; // b.n +0x34; nop
+        kuKernelCpuUnrestrictedMemcpy((void *)patch_addr, patch_code, sizeof(patch_code));
+        l_info("Patched CMvGameState::LoadGameData anti-tamper check at 0x%08x", (unsigned int)patch_addr);
+    }
+
+    // Bypass "!cFF2F2FSavefile corrupted, please create a new character." in CMvGameState::Initialize
+    // Offset 0x274 from _ZN12CMvGameState10InitializeEv (0x000de620 -> 0x000de894)
+    // Original: 0x2800 (cmp r0, #0), 0xd120 (bne.n 0xde8da)
+    // Patched:  0xe021 (b.n 0xde8da), 0xbf00 (nop)
+    uintptr_t init_func = (uintptr_t)so_symbol(&so_mod, "_ZN12CMvGameState10InitializeEv");
+    if (init_func) {
+        uintptr_t patch_init_addr = (init_func & ~1) + 0x274;
+        uint16_t patch_init_code[2] = { 0xe021, 0xbf00 }; // b.n +0x42 (to de8da); nop
+        kuKernelCpuUnrestrictedMemcpy((void *)patch_init_addr, patch_init_code, sizeof(patch_init_code));
+        l_info("Patched CMvGameState::Initialize corruption popup bypass at 0x%08x", (unsigned int)patch_init_addr);
+    }
 }
+

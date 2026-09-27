@@ -2,6 +2,8 @@
 #include "utils/glutil.h"
 
 #include <psp2/kernel/threadmgr.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 #include <falso_jni/FalsoJNI.h>
 #include <so_util/so_util.h>
@@ -19,6 +21,8 @@ int sceLibcHeapSize = 4 * 1024 * 1024;
 so_module so_mod;
 extern void *g_CMvApp_instance;
 extern void *g_CMvPlayer_instance;
+extern int cheat_god_mode;
+extern int cheat_exp_multiplier;
 
 extern int settings_capframerate;
 extern int settings_screenheight;
@@ -29,14 +33,15 @@ int (* _ZN6CMvApp12EvKeyReleaseEi)(void *this, int keycode);
 int (* _ZN6CMvApp14EvPointerPressEP15MC_PointerEvent)(void *this, void *event);
 int (* _ZN16CGxEventTargetT114EvPointerPressEP15MC_PointerEvent)(void *this, void *event);
 void (* _ZN12CMvCharacter6FullHPEv)(void *this);
-void (* _ZN12CMvCharacter5SetSPEib)(void *this, int param1, int param2);
+void (* _ZN12CMvCharacter5SetSPEib)(void *this, int sp, bool b);
+void* (*CMvItemMgr_GetInstPtr)(void);
+void (*CItemSaveData_IncMoney)(void *this, int money);
+void (*CMvPlayer_IncExp)(void *this, unsigned int exp, bool b);
 
 int screenHeight = 544;
 int screenWidth = 960;
 
 int pressL1 = 0;
-int pressR1 = 0;
-int pressSelect = 0;
 
 int main() {
     soloader_init_all();
@@ -48,6 +53,9 @@ int main() {
 
     _ZN12CMvCharacter6FullHPEv = (void *)so_symbol(&so_mod, "_ZN12CMvCharacter6FullHPEv");
     _ZN12CMvCharacter5SetSPEib = (void *)so_symbol(&so_mod, "_ZN12CMvCharacter5SetSPEib");
+    CMvItemMgr_GetInstPtr = (void *)so_symbol(&so_mod, "_ZN12CGsSingletonI10CMvItemMgrE10GetInstPtrEv");
+    CItemSaveData_IncMoney = (void *)so_symbol(&so_mod, "_ZN13CItemSaveData8IncMoneyEi");
+    CMvPlayer_IncExp = (void *)so_symbol(&so_mod, "_ZN9CMvPlayer6IncExpEjb");
     _ZN6CMvApp10EvKeyPressEi = (void *)so_symbol(&so_mod, "_ZN6CMvApp10EvKeyPressEi");
     _ZN6CMvApp12EvKeyReleaseEi = (void *)so_symbol(&so_mod, "_ZN6CMvApp12EvKeyReleaseEi");
 
@@ -85,24 +93,60 @@ void controls_handler_key(int32_t keycode, ControlsAction action) {
 
         switch (action) {
             case CONTROLS_ACTION_DOWN:
-                if(keycode == AKEYCODE_BUTTON_L1) { pressL1 = 1; }
-                if(keycode == AKEYCODE_BUTTON_R1) { pressR1 = 1; }
-                if(keycode == AKEYCODE_BUTTON_SELECT) { pressSelect = 1; }
+                if (keycode == AKEYCODE_BUTTON_L1) { 
+                    pressL1 = 1; 
+                }
 
-                if(pressL1 && pressR1 && pressSelect){
-                    if(g_CMvPlayer_instance){
-                        l_debug("Cheat - Setting players HP and SP to 100");                       
-                        _ZN12CMvCharacter6FullHPEv(g_CMvPlayer_instance);
-                        _ZN12CMvCharacter5SetSPEib(g_CMvPlayer_instance, 999, 0);
+                // Hotkey combinations while holding L1
+                if (pressL1) {
+                    if (keycode == AKEYCODE_BUTTON_SELECT) { // Select -> Toggle 50x EXP Multiplier
+                        cheat_exp_multiplier = !cheat_exp_multiplier;
+                        return;
+                    }
+                    if (keycode == AKEYCODE_BUTTON_Y) { // Triangle -> Add 10,000 Gold
+                        if (CMvItemMgr_GetInstPtr && CItemSaveData_IncMoney) {
+                            void* itemMgr = CMvItemMgr_GetInstPtr();
+                            if (itemMgr) {
+                                void* saveData = (void*)((uintptr_t)itemMgr + 4);
+                                CItemSaveData_IncMoney(saveData, 10000);
+                            }
+                        }
+                        return;
+                    }
+                    if (keycode == AKEYCODE_BUTTON_X) { // Square -> Refill HP & SP
+                        if (g_CMvPlayer_instance) {
+                            if (_ZN12CMvCharacter6FullHPEv) _ZN12CMvCharacter6FullHPEv(g_CMvPlayer_instance);
+                            if (_ZN12CMvCharacter5SetSPEib) _ZN12CMvCharacter5SetSPEib(g_CMvPlayer_instance, 999, 0);
+                        }
+                        return;
+                    }
+                    if (keycode == AKEYCODE_BUTTON_B) { // Circle -> Add 5 Stat Points
+                        if (g_CMvPlayer_instance) {
+                            uint16_t* statPts = (uint16_t*)((uintptr_t)g_CMvPlayer_instance + 0x58c);
+                            *statPts += 5;
+                        }
+                        return;
+                    }
+                    if (keycode == AKEYCODE_BUTTON_A) { // Cross -> Add 5 Skill Points
+                        if (g_CMvPlayer_instance) {
+                            uint16_t* skillPts = (uint16_t*)((uintptr_t)g_CMvPlayer_instance + 0x58e);
+                            *skillPts += 5;
+                        }
+                        return;
+                    }
+                    if (keycode == AKEYCODE_BUTTON_START) { // Start -> Toggle God Mode
+                        cheat_god_mode = !cheat_god_mode;
+                        return;
                     }
                 }
 
                 _ZN6CMvApp10EvKeyPressEi(g_CMvApp_instance, avk);
                 break;
+
             case CONTROLS_ACTION_UP:
-                if(keycode == AKEYCODE_BUTTON_L1) { pressL1 = 0; }
-                if(keycode == AKEYCODE_BUTTON_R1) { pressR1 = 0; }
-                if(keycode == AKEYCODE_BUTTON_SELECT) { pressSelect = 0; }
+                if (keycode == AKEYCODE_BUTTON_L1) { 
+                    pressL1 = 0; 
+                }
                 _ZN6CMvApp12EvKeyReleaseEi(g_CMvApp_instance, avk);
                 break;
         }

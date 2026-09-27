@@ -18,6 +18,7 @@
 #include <psp2/kernel/threadmgr.h>
 
 #include <errno.h>
+#include <psp2/io/stat.h>
 
 #ifdef USE_SCELIBC_IO
 #include <libc_bridge/libc_bridge.h>
@@ -42,13 +43,16 @@ FILE * fopen_soloader(const char * filename, const char * mode) {
         target = "app0:/cpuinfo";
     } else if (strcmp(filename, "/proc/meminfo") == 0) {
         target = "app0:/meminfo";
-    } else if (strcmp(filename, "/option.sav") == 0) {
-        snprintf(new_path, sizeof(new_path), "%s/option.sav", DATA_PATH);
+    } else if (strncmp(filename, "ux0:", 4) == 0 || strncmp(filename, "app0:", 5) == 0) {
+        target = filename;
+    } else if (strcmp(filename, "/option.sav") == 0 || strcmp(filename, "option.sav") == 0) {
+        snprintf(new_path, sizeof(new_path), "%soption.sav", DATA_PATH);
         target = new_path;
-    } else if (strncmp(filename, "/Save", 5) == 0 && strstr(filename, ".dat")) {
+    } else if (strstr(filename, "Save") && strstr(filename, ".dat")) {
+        const char *p = strstr(filename, "Save");
         int slot = 0;
-        if (sscanf(filename, "/Save%d.dat", &slot) == 1) {
-            snprintf(new_path, sizeof(new_path), "%s/Save%d.dat", DATA_PATH, slot);
+        if (sscanf(p, "Save%d.dat", &slot) == 1) {
+            snprintf(new_path, sizeof(new_path), "%sSave%d.dat", DATA_PATH, slot);
             target = new_path;
         }
     }
@@ -56,15 +60,22 @@ FILE * fopen_soloader(const char * filename, const char * mode) {
     if (target != filename)
         printf("Redirecting %s to %s\n", filename, target);
 
+    char bin_mode[16];
+    const char *final_mode = mode;
+    if (mode && !strchr(mode, 'b')) {
+        snprintf(bin_mode, sizeof(bin_mode), "%sb", mode);
+        final_mode = bin_mode;
+    }
+
 #ifdef USE_SCELIBC_IO
-    FILE* ret = sceLibcBridge_fopen(target, mode);
+    FILE* ret = sceLibcBridge_fopen(target, final_mode);
 #else
-    FILE* ret = fopen(target, mode);
+    FILE* ret = fopen(target, final_mode);
 #endif
     if (ret)
-        l_debug("fopen(%s, %s): %p", target, mode, ret);
+        l_debug("fopen(%s, %s): %p", target, final_mode, ret);
     else
-        l_warn("fopen(%s, %s): %p", target, mode, ret);
+        l_warn("fopen(%s, %s): %p", target, final_mode, ret);
     return ret;
 }
 
@@ -114,21 +125,95 @@ int stat_soloader(const char * path, stat64_bionic * buf) {
         return 0;
     }
 
-    if(strstr(path, "Save")){
-        snprintf(new_path, sizeof(new_path), "%s%s", "ux0:/data/zenonia1", path + 1);
-    } else {
-        snprintf(new_path, sizeof(new_path), "%s", path);
+    const char *target = path;
+    if (strncmp(path, "ux0:", 4) == 0 || strncmp(path, "app0:", 5) == 0) {
+        target = path;
+    } else if (strcmp(path, "/option.sav") == 0 || strcmp(path, "option.sav") == 0) {
+        snprintf(new_path, sizeof(new_path), "%soption.sav", DATA_PATH);
+        target = new_path;
+    } else if (strstr(path, "Save") && strstr(path, ".dat")) {
+        const char *p = strstr(path, "Save");
+        int slot = 0;
+        if (sscanf(p, "Save%d.dat", &slot) == 1) {
+            snprintf(new_path, sizeof(new_path), "%sSave%d.dat", DATA_PATH, slot);
+            target = new_path;
+        }
+    }
+
+    SceIoStat sce_st;
+    if (sceIoGetstat(target, &sce_st) >= 0) {
+        memset(buf, 0, sizeof(*buf));
+        buf->st_size = sce_st.st_size;
+        buf->st_mode = (sce_st.st_mode & SCE_S_IFDIR) ? (S_IFDIR | 0777) : (S_IFREG | 0666);
+        l_debug("stat(%s) via sceIoGetstat: size=%lld, mode=0x%x", target, (long long)buf->st_size, buf->st_mode);
+        return 0;
     }
 
     struct stat st;
-    int res = stat(new_path, &st);
+    int res = stat(target, &st);
 
     if (res == 0) {
         stat_newlib_to_bionic(&st, buf);
     }
 
-    l_debug("stat(%s): %i", new_path, res);
+    l_debug("stat(%s): %i", target, res);
     return res;
+}
+
+int access_soloader(const char * pathname, int mode) {
+    char new_path[256];
+    const char *target = pathname;
+
+    if (strncmp(pathname, "ux0:", 4) == 0 || strncmp(pathname, "app0:", 5) == 0) {
+        target = pathname;
+    } else if (strcmp(pathname, "/option.sav") == 0 || strcmp(pathname, "option.sav") == 0) {
+        snprintf(new_path, sizeof(new_path), "%soption.sav", DATA_PATH);
+        target = new_path;
+    } else if (strstr(pathname, "Save") && strstr(pathname, ".dat")) {
+        const char *p = strstr(pathname, "Save");
+        int slot = 0;
+        if (sscanf(p, "Save%d.dat", &slot) == 1) {
+            snprintf(new_path, sizeof(new_path), "%sSave%d.dat", DATA_PATH, slot);
+            target = new_path;
+        }
+    }
+
+    if (mode == 0) {
+        int exists = file_exists(target) ? 0 : -1;
+        l_debug("access(%s, 0): %i", target, exists);
+        return exists;
+    }
+
+    int res = access(target, mode);
+    l_debug("access(%s, %i): %i", target, mode, res);
+    return res;
+}
+
+int remove_soloader(const char * pathname) {
+    char new_path[256];
+    const char *target = pathname;
+
+    if (strncmp(pathname, "ux0:", 4) == 0 || strncmp(pathname, "app0:", 5) == 0) {
+        target = pathname;
+    } else if (strcmp(pathname, "/option.sav") == 0 || strcmp(pathname, "option.sav") == 0) {
+        snprintf(new_path, sizeof(new_path), "%soption.sav", DATA_PATH);
+        target = new_path;
+    } else if (strstr(pathname, "Save") && strstr(pathname, ".dat")) {
+        const char *p = strstr(pathname, "Save");
+        int slot = 0;
+        if (sscanf(p, "Save%d.dat", &slot) == 1) {
+            snprintf(new_path, sizeof(new_path), "%sSave%d.dat", DATA_PATH, slot);
+            target = new_path;
+        }
+    }
+
+    int res = remove(target);
+    l_debug("remove(%s): %i", target, res);
+    return res;
+}
+
+int unlink_soloader(const char * pathname) {
+    return remove_soloader(pathname);
 }
 
 int fclose_soloader(FILE * f) {

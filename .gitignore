@@ -5,3 +5,5 @@ cmake-build-*/
 lib/libc_bridge/out/
 apk/
 /lib
+.directory
+

@@ -40,24 +40,25 @@ extern "C" {
 #define DT_WHT 14
 #endif
 
-typedef struct __attribute__((__packed__)) stat64_bionic {
-    unsigned long long st_dev;
-    unsigned char __pad0[4];
-    unsigned long __st_ino;
-    unsigned int st_mode;
-    nlink_t st_nlink;
-    uid_t st_uid;
-    gid_t st_gid;
-    unsigned long long st_rdev;
-    unsigned char __pad3[4];
-    long long st_size;
-    unsigned long st_blksize;
-    unsigned long long st_blocks;
+typedef struct stat64_bionic {
+    uint64_t st_dev;
+    uint32_t __pad0;
+    uint32_t __st_ino;
+    uint32_t st_mode;
+    uint32_t st_nlink;
+    uint32_t st_uid;
+    uint32_t st_gid;
+    uint64_t st_rdev;
+    uint32_t __pad3;
+    int64_t st_size;
+    uint32_t st_blksize;
+    uint64_t st_blocks;
     struct timespec st_atim;
     struct timespec st_mtim;
     struct timespec st_ctim;
-    unsigned long long st_ino;
+    uint64_t st_ino;
 } stat64_bionic;
+
 
 typedef struct __attribute__((__packed__)) dirent64_bionic {
     int16_t d_ino; // 2 bytes // offset 0x0
@@ -93,6 +94,12 @@ int fcntl_soloader(int fd, int cmd, ...);
 int ioctl_soloader(int fd, int request, ... /* arg */);
 
 int fsync_soloader(int fd);
+
+int access_soloader(const char * pathname, int mode);
+
+int remove_soloader(const char * pathname);
+
+int unlink_soloader(const char * pathname);
 
 #ifdef __cplusplus
 };

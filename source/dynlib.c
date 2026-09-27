@@ -485,7 +485,7 @@ so_default_dynlib default_dynlib[] = {
             { "ungetwc", (uintptr_t)&ungetwc },
         #endif
 
-        { "access", (uintptr_t)&access },
+        { "access", (uintptr_t)&access_soloader },
         { "basename", (uintptr_t)&basename },
         { "chdir", (uintptr_t)&chdir },
         { "chmod", (uintptr_t)&chmod },
@@ -501,12 +501,12 @@ so_default_dynlib default_dynlib[] = {
         { "pipe", (uintptr_t)&pipe },
         { "read", (uintptr_t)&read },
         { "realpath", (uintptr_t)&realpath },
-        { "remove", (uintptr_t)&remove },
+        { "remove", (uintptr_t)&remove_soloader },
         { "rename", (uintptr_t)&rename },
         { "rewind", (uintptr_t)&rewind },
         { "rmdir", (uintptr_t)&rmdir },
         { "truncate", (uintptr_t)&truncate },
-        { "unlink", (uintptr_t)&unlink },
+        { "unlink", (uintptr_t)&unlink_soloader },
         { "write", (uintptr_t)&write },
 
 
