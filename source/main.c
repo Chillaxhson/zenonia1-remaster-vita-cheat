@@ -33,6 +33,7 @@ int (* _ZN6CMvApp12EvKeyReleaseEi)(void *this, int keycode);
 int (* _ZN6CMvApp14EvPointerPressEP15MC_PointerEvent)(void *this, void *event);
 int (* _ZN16CGxEventTargetT114EvPointerPressEP15MC_PointerEvent)(void *this, void *event);
 void (* _ZN12CMvCharacter6FullHPEv)(void *this);
+void (* _ZN12CMvCharacter6FullSPEbb)(void *this, bool b1, bool b2);
 void (* _ZN12CMvCharacter5SetSPEib)(void *this, int sp, bool b);
 void* (*CMvItemMgr_GetInstPtr)(void);
 void (*CItemSaveData_IncMoney)(void *this, int money);
@@ -52,6 +53,7 @@ int main() {
     void (*NativeRender)(void*, void*) = (void *)so_symbol(&so_mod, "Java_com_gamevil_nexus2_Natives_NativeRender");
 
     _ZN12CMvCharacter6FullHPEv = (void *)so_symbol(&so_mod, "_ZN12CMvCharacter6FullHPEv");
+    _ZN12CMvCharacter6FullSPEbb = (void *)so_symbol(&so_mod, "_ZN12CMvCharacter6FullSPEbb");
     _ZN12CMvCharacter5SetSPEib = (void *)so_symbol(&so_mod, "_ZN12CMvCharacter5SetSPEib");
     CMvItemMgr_GetInstPtr = (void *)so_symbol(&so_mod, "_ZN12CGsSingletonI10CMvItemMgrE10GetInstPtrEv");
     CItemSaveData_IncMoney = (void *)so_symbol(&so_mod, "_ZN13CItemSaveData8IncMoneyEi");
@@ -103,12 +105,12 @@ void controls_handler_key(int32_t keycode, ControlsAction action) {
                         cheat_exp_multiplier = !cheat_exp_multiplier;
                         return;
                     }
-                    if (keycode == AKEYCODE_BUTTON_Y) { // Triangle -> Add 10,000 Gold
+                    if (keycode == AKEYCODE_BUTTON_Y) { // Triangle -> Add 50,000 Gold
                         if (CMvItemMgr_GetInstPtr && CItemSaveData_IncMoney) {
                             void* itemMgr = CMvItemMgr_GetInstPtr();
                             if (itemMgr) {
                                 void* saveData = (void*)((uintptr_t)itemMgr + 4);
-                                CItemSaveData_IncMoney(saveData, 10000);
+                                CItemSaveData_IncMoney(saveData, 50000);
                             }
                         }
                         return;
@@ -116,7 +118,11 @@ void controls_handler_key(int32_t keycode, ControlsAction action) {
                     if (keycode == AKEYCODE_BUTTON_X) { // Square -> Refill HP & SP
                         if (g_CMvPlayer_instance) {
                             if (_ZN12CMvCharacter6FullHPEv) _ZN12CMvCharacter6FullHPEv(g_CMvPlayer_instance);
-                            if (_ZN12CMvCharacter5SetSPEib) _ZN12CMvCharacter5SetSPEib(g_CMvPlayer_instance, 999, 0);
+                            if (_ZN12CMvCharacter6FullSPEbb) {
+                                _ZN12CMvCharacter6FullSPEbb(g_CMvPlayer_instance, true, true);
+                            } else if (_ZN12CMvCharacter5SetSPEib) {
+                                _ZN12CMvCharacter5SetSPEib(g_CMvPlayer_instance, 9999, 1);
+                            }
                         }
                         return;
                     }

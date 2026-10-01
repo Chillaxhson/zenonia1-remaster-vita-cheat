@@ -39,8 +39,8 @@ The L1 button (`AKEYCODE_BUTTON_L1`) does not conflict with in-game controls (it
 Implement the following hotkey combinations when holding **L1**:
 
 - **L1 + SELECT**: Toggle 50x EXP Multiplier ON/OFF
-- **L1 + SQUARE**: Full HP & 999 SP Refill
-- **L1 + TRIANGLE**: Add 10,000 Gold
+- **L1 + SQUARE**: Full HP & SP Refill (100% HP & SP)
+- **L1 + TRIANGLE**: Add 50,000 Gold
 - **L1 + CIRCLE**: Add 5 Stat Points
 - **L1 + CROSS**: Add 5 Skill Points
 - **L1 + START**: Toggle God Mode (Invulnerability) ON/OFF
@@ -123,6 +123,7 @@ Export global flags `int cheat_god_mode = 0;` and `int cheat_exp_multiplier = 0;
    extern int cheat_exp_multiplier;
 
    void (* _ZN12CMvCharacter6FullHPEv)(void *this);
+   void (* _ZN12CMvCharacter6FullSPEbb)(void *this, bool b1, bool b2);
    void (* _ZN12CMvCharacter5SetSPEib)(void *this, int sp, bool b);
    void* (*CMvItemMgr_GetInstPtr)(void);
    void (*CItemSaveData_IncMoney)(void *this, int money);
@@ -131,6 +132,7 @@ Export global flags `int cheat_god_mode = 0;` and `int cheat_exp_multiplier = 0;
 2. Resolve symbols in `main()` using `so_symbol`:
    ```c
    _ZN12CMvCharacter6FullHPEv = (void *)so_symbol(&so_mod, "_ZN12CMvCharacter6FullHPEv");
+   _ZN12CMvCharacter6FullSPEbb = (void *)so_symbol(&so_mod, "_ZN12CMvCharacter6FullSPEbb");
    _ZN12CMvCharacter5SetSPEib = (void *)so_symbol(&so_mod, "_ZN12CMvCharacter5SetSPEib");
    CMvItemMgr_GetInstPtr = (void *)so_symbol(&so_mod, "_ZN12CGsSingletonI10CMvItemMgrE10GetInstPtrEv");
    CItemSaveData_IncMoney = (void *)so_symbol(&so_mod, "_ZN13CItemSaveData8IncMoneyEi");
@@ -148,7 +150,11 @@ Export global flags `int cheat_god_mode = 0;` and `int cheat_exp_multiplier = 0;
        ```c
        if (g_CMvPlayer_instance) {
            if (_ZN12CMvCharacter6FullHPEv) _ZN12CMvCharacter6FullHPEv(g_CMvPlayer_instance);
-           if (_ZN12CMvCharacter5SetSPEib) _ZN12CMvCharacter5SetSPEib(g_CMvPlayer_instance, 999, 0);
+           if (_ZN12CMvCharacter6FullSPEbb) {
+               _ZN12CMvCharacter6FullSPEbb(g_CMvPlayer_instance, true, true);
+           } else if (_ZN12CMvCharacter5SetSPEib) {
+               _ZN12CMvCharacter5SetSPEib(g_CMvPlayer_instance, 9999, 1);
+           }
        }
        return;
        ```
@@ -158,7 +164,7 @@ Export global flags `int cheat_god_mode = 0;` and `int cheat_exp_multiplier = 0;
            void* itemMgr = CMvItemMgr_GetInstPtr();
            if (itemMgr) {
                void* saveData = (void*)((uintptr_t)itemMgr + 4);
-               CItemSaveData_IncMoney(saveData, 10000);
+               CItemSaveData_IncMoney(saveData, 50000);
            }
        }
        return;
@@ -222,6 +228,7 @@ If `so_loader` is compiled with `hard` float ABI:
 | Symbol / Offset | Description | Signature |
 |---|---|---|
 | `_ZN12CMvCharacter6FullHPEv` | Restores character HP to maximum | `void FullHP(void *this)` |
+| `_ZN12CMvCharacter6FullSPEbb` | Restores character SP to maximum | `void FullSP(void *this, bool b1, bool b2)` |
 | `_ZN12CMvCharacter5SetSPEib` | Sets character SP value | `void SetSP(void *this, int sp, bool b)` |
 | `_ZN12CGsSingletonI10CMvItemMgrE10GetInstPtrEv` | Retrieves Item Manager singleton | `void* GetInstPtr(void)` |
 | `_ZN13CItemSaveData8IncMoneyEi` | Adds money/gold to inventory | `void IncMoney(void *this, int money)` |
@@ -239,11 +246,9 @@ The `L1` button (`AKEYCODE_BUTTON_L1`) returns `0` in `vita_to_control` and is u
 
 | Button Combination | In-Game Action | Effect |
 |---|---|---|
-| Button Combination | In-Game Action | Effect |
-|---|---|---|
 | <kbd>L1</kbd> + <kbd>SELECT</kbd> | Toggle 50x EXP | Toggles 50x Experience Points multiplier ON / OFF |
-| <kbd>L1</kbd> + <kbd>SQUARE</kbd> | Refill Vitals | Restores HP to 100% and SP to 999 |
-| <kbd>L1</kbd> + <kbd>TRIANGLE</kbd> | Add Gold | Adds +10,000 Gold directly to inventory |
+| <kbd>L1</kbd> + <kbd>SQUARE</kbd> | Refill Vitals | Restores HP and SP to 100% |
+| <kbd>L1</kbd> + <kbd>TRIANGLE</kbd> | Add Gold | Adds +50,000 Gold directly to inventory |
 | <kbd>L1</kbd> + <kbd>CIRCLE</kbd> | Add Stat Points | Adds +5 unassigned Character Stat Points |
 | <kbd>L1</kbd> + <kbd>CROSS</kbd> | Add Skill Points | Adds +5 unassigned Skill Points |
 | <kbd>L1</kbd> + <kbd>START</kbd> | Toggle God Mode | Toggles complete damage immunity ON / OFF |
@@ -335,6 +340,7 @@ extern int cheat_god_mode;
 extern int cheat_exp_multiplier;
 
 void (* _ZN12CMvCharacter6FullHPEv)(void *this);
+void (* _ZN12CMvCharacter6FullSPEbb)(void *this, bool b1, bool b2);
 void (* _ZN12CMvCharacter5SetSPEib)(void *this, int sp, bool b);
 void* (*CMvItemMgr_GetInstPtr)(void);
 void (*CItemSaveData_IncMoney)(void *this, int money);
@@ -344,6 +350,7 @@ int pressL1 = 0;
 int main() {
     // ... existing initialization ...
     _ZN12CMvCharacter6FullHPEv = (void *)so_symbol(&so_mod, "_ZN12CMvCharacter6FullHPEv");
+    _ZN12CMvCharacter6FullSPEbb = (void *)so_symbol(&so_mod, "_ZN12CMvCharacter6FullSPEbb");
     _ZN12CMvCharacter5SetSPEib = (void *)so_symbol(&so_mod, "_ZN12CMvCharacter5SetSPEib");
     CMvItemMgr_GetInstPtr = (void *)so_symbol(&so_mod, "_ZN12CGsSingletonI10CMvItemMgrE10GetInstPtrEv");
     CItemSaveData_IncMoney = (void *)so_symbol(&so_mod, "_ZN13CItemSaveData8IncMoneyEi");
@@ -366,12 +373,12 @@ void controls_handler_key(int32_t keycode, ControlsAction action) {
                         cheat_exp_multiplier = !cheat_exp_multiplier;
                         return;
                     }
-                    if (keycode == AKEYCODE_BUTTON_Y) { // Triangle -> Add 10,000 Gold
+                    if (keycode == AKEYCODE_BUTTON_Y) { // Triangle -> Add 50,000 Gold
                         if (CMvItemMgr_GetInstPtr && CItemSaveData_IncMoney) {
                             void* itemMgr = CMvItemMgr_GetInstPtr();
                             if (itemMgr) {
                                 void* saveData = (void*)((uintptr_t)itemMgr + 4);
-                                CItemSaveData_IncMoney(saveData, 10000);
+                                CItemSaveData_IncMoney(saveData, 50000);
                             }
                         }
                         return;
@@ -379,7 +386,11 @@ void controls_handler_key(int32_t keycode, ControlsAction action) {
                     if (keycode == AKEYCODE_BUTTON_X) { // Square -> Refill HP & SP
                         if (g_CMvPlayer_instance) {
                             if (_ZN12CMvCharacter6FullHPEv) _ZN12CMvCharacter6FullHPEv(g_CMvPlayer_instance);
-                            if (_ZN12CMvCharacter5SetSPEib) _ZN12CMvCharacter5SetSPEib(g_CMvPlayer_instance, 999, 0);
+                            if (_ZN12CMvCharacter6FullSPEbb) {
+                                _ZN12CMvCharacter6FullSPEbb(g_CMvPlayer_instance, true, true);
+                            } else if (_ZN12CMvCharacter5SetSPEib) {
+                                _ZN12CMvCharacter5SetSPEib(g_CMvPlayer_instance, 9999, 1);
+                            }
                         }
                         return;
                     }

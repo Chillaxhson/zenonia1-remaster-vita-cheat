@@ -15,8 +15,8 @@ Cheats are activated in-game by holding **<kbd>L1</kbd>** and pressing a face or
 | Combination | Action | Description |
 |---|---|---|
 | **<kbd>L1</kbd> + <kbd>SELECT</kbd>** | **Toggle 50x EXP** | Toggles a 50x Experience Points multiplier ON / OFF |
-| **<kbd>L1</kbd> + <kbd>SQUARE</kbd>** | **Refill HP & SP** | Instantly restores HP to 100% and SP to 999 |
-| **<kbd>L1</kbd> + <kbd>TRIANGLE</kbd>** | **Add 10,000 Gold** | Adds +10,000 Gold directly to your inventory |
+| **<kbd>L1</kbd> + <kbd>SQUARE</kbd>** | **Refill HP & SP** | Instantly restores HP and SP to 100% |
+| **<kbd>L1</kbd> + <kbd>TRIANGLE</kbd>** | **Add 50,000 Gold** | Adds +50,000 Gold directly to your inventory |
 | **<kbd>L1</kbd> + <kbd>CIRCLE</kbd>** | **Add 5 Stat Points** | Adds +5 unassigned Character Stat Points |
 | **<kbd>L1</kbd> + <kbd>CROSS</kbd>** | **Add 5 Skill Points** | Adds +5 unassigned Skill Points |
 | **<kbd>L1</kbd> + <kbd>START</kbd>** | **Toggle God Mode** | Toggles invulnerability (damage immunity) ON / OFF |
